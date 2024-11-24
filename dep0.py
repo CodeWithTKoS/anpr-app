@@ -4,16 +4,6 @@ import easyocr
 from ultralytics import YOLO
 import streamlit as st
 st.set_page_config(page_title="ANPR", page_icon="🚘")
-import os
-
-# Get the current script's directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-print(current_dir)
-
-# Set the root directory (adjust if needed)
-root_dir = os.path.join(current_dir, "best.pt")  # Assuming root is one level up
-
-print(f"Model loaded from: {root_dir}")
 
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
@@ -31,7 +21,7 @@ def extract_characters(plate_image):
 # Function to perform ANPR using uploaded image
 def anpr_from_image(image):
     # Load YOLO model
-    model = YOLO("best.pt")  # Adjust path as needed
+    model = YOLO("best.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
     results = model.predict(source=image, conf=0.5)
@@ -69,8 +59,11 @@ if uploaded_image is not None:
     # Process the uploaded image for ANPR
     result_image = anpr_from_image(image)
     
+    # Convert the result image to RGB for displaying in Streamlit
+    result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+    
     # Display the processed image with detected license plate and text
-    st.image(result_image, caption="Processed Image", use_column_width=True)
+    st.image(result_image_rgb, caption="Processed Image", use_column_width=True)
 else:
     st.write("Upload an image to start the ANPR process.")
 
