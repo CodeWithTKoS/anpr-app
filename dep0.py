@@ -3,16 +3,18 @@ import numpy as np
 import easyocr
 from ultralytics import YOLO
 import streamlit as st
-st.set_page_config(page_title="ANPR",page_icon="🚘")
+st.set_page_config(page_title="ANPR", page_icon="🚘")
 import os
+
 # Get the current script's directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 print(current_dir)
 
 # Set the root directory (adjust if needed)
-root_dir = os.path.join(current_dir, "best.pt") # Assuming root is one level up
+root_dir = os.path.join(current_dir, "best.pt")  # Assuming root is one level up
 
 print(f"Model loaded from: {root_dir}")
+
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
 
@@ -26,76 +28,53 @@ def extract_characters(plate_image):
     extracted_text = " ".join([text for (bbox, text, confidence) in results])
     return extracted_text.strip()
 
-# Function to perform ANPR using webcam feed
-def anpr_webcam(model_path):
+# Function to perform ANPR using uploaded image
+def anpr_from_image(image):
     # Load YOLO model
-    model = YOLO(model_path)
+    model = YOLO("best.pt")  # Adjust path as needed
 
-    # Open webcam
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        st.error("Error: Could not access webcam.")
-        return
+    # Detect license plate using YOLO
+    results = model.predict(source=image, conf=0.5)
+    detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
 
-    st.warning("Press 'q' in the console to quit the webcam feed.")
-    frame_placeholder = st.empty()
-    
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            st.error("Error: Could not read frame.")
-            break
+    for detection in detections:
+        x_min, y_min, x_max, y_max, conf, cls = map(int, detection)
+        
+        # Draw the bounding box
+        cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+        cv2.putText(image, "Plate", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        # Detect license plate using YOLO
-        results = model.predict(source=frame, conf=0.5)
-        detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
+        # Crop the license plate region
+        plate_image = image[y_min:y_max, x_min:x_max]
 
-        for detection in detections:
-            x_min, y_min, x_max, y_max, conf, cls = map(int, detection)
-            
-            # Draw the bounding box
-            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-            cv2.putText(frame, "Plate", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        # Extract characters from the license plate
+        plate_text = extract_characters(plate_image)
+        
+        # Display the recognized text on the frame
+        cv2.putText(image, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        st.write(f"Detected License Plate Text: {plate_text}")
 
-            # Crop the license plate region
-            plate_image = frame[y_min:y_max, x_min:x_max]
-
-            # Extract characters from the license plate
-            plate_text = extract_characters(plate_image)
-            
-            # Display the recognized text on the frame
-            cv2.putText(frame, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-            st.write(f"Detected License Plate Text: {plate_text}")
-
-        # Convert frame to RGB for Streamlit
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_placeholder.image(rgb_frame, channels="RGB", use_column_width=True)
-
-        # Break loop on 'q' key press in the console
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # Release resources
-    cap.release()
-    cv2.destroyAllWindows()
-
-# File path input
-st.sidebar.header("Settings")
-model_path = root_dir
+    return image
 
 # Streamlit app
 st.title("Automatic Number Plate Recognition (ANPR)")
 
-if st.sidebar.button("Start Webcam"):
-    if model_path:
-        anpr_webcam(model_path)
-    else:
-        st.error("Please provide a valid YOLO model path.")
+# Image upload functionality
+uploaded_image = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
 
-if st.sidebar.button("Stop Webcam"):
-    st.stop()
+if uploaded_image is not None:
+    # Convert uploaded image to OpenCV format
+    image = cv2.imdecode(np.frombuffer(uploaded_image.read(), np.uint8), cv2.IMREAD_COLOR)
+    
+    # Process the uploaded image for ANPR
+    result_image = anpr_from_image(image)
+    
+    # Display the processed image with detected license plate and text
+    st.image(result_image, caption="Processed Image", use_column_width=True)
+else:
+    st.write("Upload an image to start the ANPR process.")
 
+# Sidebar with additional options
 with st.sidebar:
     st.write("---")
     st.write("AI App created by @ Puja Ghosal")
-    
