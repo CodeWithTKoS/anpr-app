@@ -8,13 +8,30 @@ st.set_page_config(page_title="ANPR", page_icon="🚘")
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
 
-# Function to extract characters using EasyOCR
-def extract_characters(plate_image):
-    # Convert the license plate image to grayscale
+# Function to enhance the cropped license plate image
+def enhance_plate_image(plate_image):
+    # Convert to grayscale
     gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
     
+    # Apply histogram equalization to improve contrast
+    equalized = cv2.equalizeHist(gray)
+    
+    # Apply adaptive thresholding for better edge detection
+    thresh = cv2.adaptiveThreshold(equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    
+    # Apply sharpening filter to enhance edges
+    kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])  # Simple sharpening filter
+    sharpened = cv2.filter2D(thresh, -1, kernel)
+    
+    return sharpened
+
+# Function to extract characters using EasyOCR
+def extract_characters(plate_image):
+    # Enhance the license plate image before OCR
+    enhanced_plate = enhance_plate_image(plate_image)
+    
     # Use EasyOCR for text recognition
-    results = reader.readtext(gray)
+    results = reader.readtext(enhanced_plate)
     extracted_text = " ".join([text for (bbox, text, confidence) in results])
     return extracted_text.strip()
 
