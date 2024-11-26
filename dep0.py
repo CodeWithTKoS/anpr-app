@@ -18,29 +18,13 @@ def extract_characters(plate_image):
     extracted_text = " ".join([text for (bbox, text, confidence) in results])
     return extracted_text.strip()
 
-# Function to resize the image for YOLOv8
-def resize_for_yolo(image, target_size=(640, 640)):
-    # Resize the image to the required size (YOLO expects a square input)
-    resized_image = cv2.resize(image, target_size)
-    
-    # Normalize the image to [0, 1] range by dividing by 255
-    normalized_image = resized_image / 255.0
-    
-    # Convert to the correct format (BGR -> RGB) for YOLOv8
-    image_rgb = cv2.cvtColor(normalized_image, cv2.COLOR_BGR2RGB)
-    
-    return image_rgb
-
 # Function to perform ANPR using uploaded image
 def anpr_from_image(image):
-    # Resize image for YOLOv8
-    resized_image = resize_for_yolo(image)
-
     # Load YOLO model
     model = YOLO("best.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
-    results = model.predict(source=resized_image, conf=0.9)
+    results = model.predict(source=image, conf=0.5)
     detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
 
     for detection in detections:
