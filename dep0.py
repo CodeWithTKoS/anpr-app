@@ -10,51 +10,47 @@ st.set_page_config(page_title="ANPR", page_icon="🚘")
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
 
-# Function to enhance the license plate image
-def enhance_image(plate_image):
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
-    
-    # Apply GaussianBlur for noise reduction
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    
-    # Use Adaptive Thresholding to enhance characters
-    enhanced = cv2.adaptiveThreshold(
-        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-    )
-    return enhanced
+# Function to perform OCR on a cropped license plate image
+def get_ocr(im, coors):
+    x_min, y_min, x_max, y_max = map(int, coors)
+    cropped_plate = im[y_min:y_max, x_min:x_max]
 
-# Function to extract characters using EasyOCR
-def extract_characters(plate_image):
-    # Enhance the license plate image
-    enhanced_image = enhance_image(plate_image)
+    # Convert the cropped image to grayscale
+    gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
     
     # Use EasyOCR for text recognition
-    results = reader.readtext(enhanced_image)
-    extracted_text = " ".join([text for (_, text, _) in results])
-    return extracted_text.strip()
+    results = reader.readtext(gray)
+    
+    # Extract and format the recognized text
+    ocr_text = ""
+    for result in results:
+        text, conf = result[1], result[2]
+        if conf > 0.2:  # Confidence threshold for filtering results
+            ocr_text = text
+            break
+    return ocr_text.strip()
 
-# Function to perform ANPR using uploaded image
+# Function to perform ANPR using YOLO and OCR
 def anpr_from_image(image):
     # Load YOLO model
-    model = YOLO("best.pt")  # Provide the path to your YOLO model file
-
-    # Detect license plate using YOLO
+    model = YOLO("best.pt")  # Replace with your YOLO model file path
+    
+    # Detect license plates using YOLO
     results = model.predict(source=image, conf=0.5)
     detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
 
     for detection in detections:
-        x_min, y_min, x_max, y_max, conf, cls = map(int, detection[:6])  # Ensure correct mapping of bbox
+        x_min, y_min, x_max, y_max, conf, cls = detection[:6]
+        coords = [x_min, y_min, x_max, y_max]
         
-        # Crop the license plate region
-        plate_image = image[y_min:y_max, x_min:x_max]
-
-        # Extract characters from the license plate
-        plate_text = extract_characters(plate_image)
+        # Draw a bounding box around the detected license plate
+        cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
         
-        # Display the recognized text on the frame
-        cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-        cv2.putText(image, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        # Perform OCR on the cropped license plate region
+        plate_text = get_ocr(image, coords)
+        
+        # Display recognized text on the image
+        cv2.putText(image, plate_text, (int(x_min), int(y_max) + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
         st.write(f"Detected License Plate Text: {plate_text}")
 
     return image
