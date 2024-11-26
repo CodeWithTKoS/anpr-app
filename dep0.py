@@ -26,7 +26,7 @@ def enhance_image(plate_image):
 
 # Function to extract characters using EasyOCR
 def extract_characters(plate_image):
-    # Enhance the image for better OCR performance
+    # Enhance the license plate image
     enhanced_image = enhance_image(plate_image)
     
     # Use EasyOCR for text recognition
