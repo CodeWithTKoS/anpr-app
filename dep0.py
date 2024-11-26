@@ -1,16 +1,17 @@
 import cv2
 import numpy as np
-import easyocr
+import pytesseract
 from ultralytics import YOLO
 import streamlit as st
 
 # Configure the Streamlit page
 st.set_page_config(page_title="ANPR", page_icon="🚘")
 
-# Initialize EasyOCR Reader
-reader = easyocr.Reader(['en'])
+# Configure pytesseract to point to the Tesseract executable (if needed)
+# Uncomment the line below and adjust the path if you're using Windows
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Function to perform OCR on a cropped license plate image
+# Function to perform OCR on a cropped license plate image using PyTesseract
 def get_ocr(im, coors):
     x_min, y_min, x_max, y_max = map(int, coors)
     cropped_plate = im[y_min:y_max, x_min:x_max]
@@ -18,16 +19,8 @@ def get_ocr(im, coors):
     # Convert the cropped image to grayscale
     gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
     
-    # Use EasyOCR for text recognition
-    results = reader.readtext(gray)
-    
-    # Extract and format the recognized text
-    ocr_text = ""
-    for result in results:
-        text, conf = result[1], result[2]
-        if conf > 0.2:  # Confidence threshold for filtering results
-            ocr_text = text
-            break
+    # Use Tesseract for text recognition
+    ocr_text = pytesseract.image_to_string(gray, config='--psm 8')  # --psm 8 for sparse text
     return ocr_text.strip()
 
 # Function to perform ANPR using YOLO and OCR
