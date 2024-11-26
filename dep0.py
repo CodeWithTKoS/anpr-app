@@ -1,22 +1,21 @@
 import cv2
 import numpy as np
-from paddleocr import PaddleOCR
+import easyocr
 from ultralytics import YOLO
 import streamlit as st
-
 st.set_page_config(page_title="ANPR", page_icon="🚘")
 
-# Initialize PaddleOCR
-ocr = PaddleOCR(use_angle_cls=True, lang='en')  # Initialize PaddleOCR with English language
+# Initialize EasyOCR Reader
+reader = easyocr.Reader(['en'])
 
-# Function to extract characters using PaddleOCR
+# Function to extract characters using EasyOCR
 def extract_characters(plate_image):
     # Convert the license plate image to grayscale
     gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
     
-    # Perform OCR on the grayscale license plate image
-    results = ocr.ocr(gray, cls=True)
-    extracted_text = " ".join([line[1][0] for line in results[0]])
+    # Use EasyOCR for text recognition
+    results = reader.readtext(gray)
+    extracted_text = " ".join([text for (bbox, text, confidence) in results])
     return extracted_text.strip()
 
 # Function to perform ANPR using uploaded image
