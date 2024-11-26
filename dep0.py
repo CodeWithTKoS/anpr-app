@@ -3,6 +3,8 @@ import numpy as np
 import easyocr
 from ultralytics import YOLO
 import streamlit as st
+
+# Configure the Streamlit page
 st.set_page_config(page_title="ANPR", page_icon="🚘")
 
 # Initialize EasyOCR Reader
@@ -15,7 +17,7 @@ def extract_characters(plate_image):
     
     # Use EasyOCR for text recognition
     results = reader.readtext(gray)
-    extracted_text = " ".join([text for (bbox, text, confidence) in results])
+    extracted_text = " ".join([text for (_, text, _) in results])
     return extracted_text.strip()
 
 # Function to perform ANPR using uploaded image
@@ -28,7 +30,7 @@ def anpr_from_image(image):
     detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
 
     for detection in detections:
-        x_min, y_min, x_max, y_max, conf, cls = map(int, detection)
+        x_min, y_min, x_max, y_max, conf, cls = map(int, detection[:6])  # Ensure correct mapping of bbox
         
         # Draw the bounding box
         cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
