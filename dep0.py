@@ -51,7 +51,7 @@ def anpr_from_image(image):
 # Function to perform ANPR on video frames
 def anpr_from_video_frame(frame):
     # Load YOLO model
-    model = YOLO("best.pt")  # Provide the path to your YOLO model file
+    model = YOLO("best1.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
     results = model.predict(source=frame, conf=0.5)
