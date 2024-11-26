@@ -65,52 +65,6 @@ def process_uploaded_image(uploaded_image):
 
     return plate_text
 
-# Function to process uploaded video
-def process_uploaded_video(uploaded_video):
-    # Open the video file
-    video = cv2.VideoCapture(uploaded_video)
-    
-    if not video.isOpened():
-        st.error("Error: Could not open video.")
-        return
-
-    # Load YOLO model
-    model = YOLO(root_dir)
-
-    while video.isOpened():
-        ret, frame = video.read()
-        if not ret:
-            st.error("Error: Could not read frame.")
-            break
-
-        # Detect license plate using YOLO
-        results = model.predict(source=frame, conf=0.5)
-        detections = results[0].boxes.data.cpu().numpy()  # Extract bounding box data
-
-        for detection in detections:
-            x_min, y_min, x_max, y_max, conf, cls = map(int, detection)
-
-            # Draw the bounding box
-            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-            cv2.putText(frame, "Plate", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
-            # Crop the license plate region
-            plate_image = frame[y_min:y_max, x_min:x_max]
-
-            # Enhance the cropped image for OCR
-            plate_text = extract_characters(plate_image)
-
-            # Display the recognized text on the frame
-            cv2.putText(frame, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-
-        # Convert frame to RGB for Streamlit
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        st.image(rgb_frame, channels="RGB", caption="Processed Video Frame", use_column_width=True)
-
-    # Release resources
-    video.release()
-    cv2.destroyAllWindows()
-
 # Streamlit app
 st.title("Automatic Number Plate Recognition (ANPR)")
 
@@ -118,14 +72,10 @@ st.sidebar.header("Settings")
 model_path = root_dir
 
 uploaded_image = st.sidebar.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
-uploaded_video = st.sidebar.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
 
 if uploaded_image is not None:
     plate_text = process_uploaded_image(uploaded_image)
     st.write(f"Detected License Plate Text: {plate_text}")
-
-if uploaded_video is not None:
-    process_uploaded_video(uploaded_video)
 
 with st.sidebar:
     st.write("---")
