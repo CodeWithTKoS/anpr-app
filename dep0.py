@@ -46,10 +46,6 @@ def anpr_from_image(image):
     for detection in detections:
         x_min, y_min, x_max, y_max, conf, cls = map(int, detection[:6])  # Ensure correct mapping of bbox
         
-        # Draw the bounding box
-        cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-        cv2.putText(image, "Plate", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
         # Crop the license plate region
         plate_image = image[y_min:y_max, x_min:x_max]
 
@@ -57,6 +53,7 @@ def anpr_from_image(image):
         plate_text = extract_characters(plate_image)
         
         # Display the recognized text on the frame
+        cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
         cv2.putText(image, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
         st.write(f"Detected License Plate Text: {plate_text}")
 
