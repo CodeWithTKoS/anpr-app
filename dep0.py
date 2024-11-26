@@ -3,7 +3,6 @@ import numpy as np
 import easyocr
 from ultralytics import YOLO
 import streamlit as st
-import re
 
 # Configure the Streamlit page
 st.set_page_config(page_title="ANPR", page_icon="🚘")
@@ -11,7 +10,7 @@ st.set_page_config(page_title="ANPR", page_icon="🚘")
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
 
-# Function to perform OCR on a cropped license plate image with preprocessing
+# Function to perform OCR on a cropped license plate image
 def get_ocr(im, coors):
     x_min, y_min, x_max, y_max = map(int, coors)
     cropped_plate = im[y_min:y_max, x_min:x_max]
@@ -19,20 +18,9 @@ def get_ocr(im, coors):
     # Convert the cropped image to grayscale
     gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
     
-    # Apply preprocessing to improve OCR accuracy
-    # Thresholding: Convert to binary image
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    
-    # Sharpen the image to enhance text clarity
-    kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])
-    sharpened = cv2.filter2D(thresh, -1, kernel)
-    
-    # Resize image to make text larger
-    resized = cv2.resize(sharpened, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    
     # Use EasyOCR for text recognition
-    results = reader.readtext(resized)
-
+    results = reader.readtext(gray)
+    
     # Extract and format the recognized text
     ocr_text = ""
     for result in results:
@@ -40,24 +28,7 @@ def get_ocr(im, coors):
         if conf > 0.2:  # Confidence threshold for filtering results
             ocr_text = text
             break
-    
-    # Apply regex validation to correct OCR errors
-    ocr_text = validate_license_plate(ocr_text)
-
     return ocr_text.strip()
-
-# Function to validate the license plate format (using regex)
-def validate_license_plate(text):
-    # Generalized regex pattern for license plates (handles various formats like ABC 1234, 1234 XYZ, etc.)
-    pattern = r"([A-Za-z]{1,3})\s?(\d{1,4})\s?([A-Za-z]{1,3})?"
-    match = re.match(pattern, text.strip())
-    
-    if match:
-        # Format the license plate in a consistent way (e.g., "ABC 1234 XYZ")
-        formatted_plate = " ".join([match.group(1), match.group(2), match.group(3) if match.group(3) else ""])
-        return formatted_plate.strip()
-    else:
-        return text  # Return original text if it doesn't match the pattern
 
 # Function to perform ANPR using YOLO and OCR
 def anpr_from_image(image):
@@ -75,11 +46,17 @@ def anpr_from_image(image):
         # Draw a bounding box around the detected license plate
         cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
         
+        # Crop the detected license plate region
+        cropped_plate = image[int(y_min):int(y_max), int(x_min):int(x_max)]
+        
         # Perform OCR on the cropped license plate region
         plate_text = get_ocr(image, coords)
         
         # Display recognized text on the image
         cv2.putText(image, plate_text, (int(x_min), int(y_max) + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        
+        # Optionally, display the cropped license plate on Streamlit (for debugging purposes)
+        st.image(cropped_plate, caption="Cropped License Plate", use_column_width=True)
         st.write(f"Detected License Plate Text: {plate_text}")
 
     return image
