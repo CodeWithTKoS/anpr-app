@@ -1,6 +1,5 @@
 streamlit
 opencv-python-headless
 ultralytics
-numpy==1.23.5
+numpy
 paddleocr
-paddlepaddle
