@@ -3,16 +3,7 @@ import numpy as np
 import easyocr
 from ultralytics import YOLO
 import streamlit as st
-import os
-from PIL import Image
-
 st.set_page_config(page_title="ANPR", page_icon="🚘")
-
-# Get the current script's directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Set the root directory (adjust if needed)
-root_dir = os.path.join(current_dir, "best.pt")  # Assuming root is one level up
 
 # Initialize EasyOCR Reader
 reader = easyocr.Reader(['en'])
@@ -22,22 +13,15 @@ def extract_characters(plate_image):
     # Convert the license plate image to grayscale
     gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
     
-    # Enhance the image (e.g., thresholding or noise removal)
-    _, enhanced_image = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    
     # Use EasyOCR for text recognition
-    results = reader.readtext(enhanced_image)
+    results = reader.readtext(gray)
     extracted_text = " ".join([text for (bbox, text, confidence) in results])
     return extracted_text.strip()
 
-# Function to process uploaded image
-def process_uploaded_image(uploaded_image):
-    # Convert the uploaded image to an OpenCV format
-    image = np.array(uploaded_image)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
+# Function to perform ANPR using uploaded image
+def anpr_from_image(image):
     # Load YOLO model
-    model = YOLO(root_dir)
+    model = YOLO("best.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
     results = model.predict(source=image, conf=0.5)
@@ -45,7 +29,7 @@ def process_uploaded_image(uploaded_image):
 
     for detection in detections:
         x_min, y_min, x_max, y_max, conf, cls = map(int, detection)
-
+        
         # Draw the bounding box
         cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
         cv2.putText(image, "Plate", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
@@ -53,30 +37,37 @@ def process_uploaded_image(uploaded_image):
         # Crop the license plate region
         plate_image = image[y_min:y_max, x_min:x_max]
 
-        # Enhance the cropped image for OCR
+        # Extract characters from the license plate
         plate_text = extract_characters(plate_image)
-
-        # Display the recognized text on the image
+        
+        # Display the recognized text on the frame
         cv2.putText(image, plate_text, (x_min, y_max + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        st.write(f"Detected License Plate Text: {plate_text}")
 
-    # Convert frame to RGB for Streamlit
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    st.image(rgb_image, channels="RGB", caption="Processed Image", use_column_width=True)
-
-    return plate_text
+    return image
 
 # Streamlit app
 st.title("Automatic Number Plate Recognition (ANPR)")
 
-st.sidebar.header("Settings")
-model_path = root_dir
-
-uploaded_image = st.sidebar.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
+# Image upload functionality
+uploaded_image = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
 
 if uploaded_image is not None:
-    plate_text = process_uploaded_image(uploaded_image)
-    st.write(f"Detected License Plate Text: {plate_text}")
+    # Convert uploaded image to OpenCV format
+    image = cv2.imdecode(np.frombuffer(uploaded_image.read(), np.uint8), cv2.IMREAD_COLOR)
+    
+    # Process the uploaded image for ANPR
+    result_image = anpr_from_image(image)
+    
+    # Convert the result image to RGB for displaying in Streamlit
+    result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+    
+    # Display the processed image with detected license plate and text
+    st.image(result_image_rgb, caption="Processed Image", use_column_width=True)
+else:
+    st.write("Upload an image to start the ANPR process.")
 
+# Sidebar with additional options
 with st.sidebar:
     st.write("---")
     st.write("AI App created by @ Puja Ghosal")
