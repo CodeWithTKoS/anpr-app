@@ -1,23 +1,23 @@
 import cv2
 import numpy as np
-import easyocr
+from paddleocr import PaddleOCR
 from ultralytics import YOLO
 import streamlit as st
 
 # Set up the Streamlit page
 st.set_page_config(page_title="ANPR", page_icon="🚘")
 
-# Initialize EasyOCR Reader
-reader = easyocr.Reader(['en'])
+# Initialize PaddleOCR
+ocr = PaddleOCR(use_angle_cls=True, lang='en')
 
-# Function to extract characters using EasyOCR
+# Function to extract characters using PaddleOCR
 def extract_characters(plate_image):
-    # Convert the license plate image to grayscale
-    gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+    # Convert the license plate image to RGB (required by PaddleOCR)
+    rgb_image = cv2.cvtColor(plate_image, cv2.COLOR_BGR2RGB)
     
-    # Use EasyOCR for text recognition
-    results = reader.readtext(gray)
-    extracted_text = " ".join([text for (bbox, text, confidence) in results])
+    # Use PaddleOCR for text recognition
+    results = ocr.ocr(rgb_image)
+    extracted_text = " ".join([line[1][0] for line in results[0]])
     return extracted_text.strip()
 
 # Function to perform ANPR on an image
@@ -51,7 +51,7 @@ def anpr_from_image(image):
 # Function to perform ANPR on video frames
 def anpr_from_video_frame(frame):
     # Load YOLO model
-    model = YOLO("best1.pt")  # Provide the path to your YOLO model file
+    model = YOLO("best.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
     results = model.predict(source=frame, conf=0.5)
