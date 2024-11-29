@@ -1,5 +1,5 @@
 streamlit
-opencv-python
 easyocr
 ultralytics
 numpy
+opencv-python
