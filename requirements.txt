@@ -1,6 +1,6 @@
 streamlit
 opencv-python
-paddleocr
+easyocr
 ultralytics
 Pillow
 numpy
