@@ -2,5 +2,4 @@ streamlit
 opencv-python
 easyocr
 ultralytics
-Pillow
 numpy
