@@ -86,4 +86,4 @@ else:
 # Sidebar with additional options
 with st.sidebar:
     st.write("---")
-    st.write("AI App created by @ Puja Ghosal")
+    st.write("AI App created by @ Debjit Das")
