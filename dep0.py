@@ -37,7 +37,7 @@ def extract_characters(plate_image):
 # Function to perform ANPR using uploaded image
 def anpr_from_image(image):
     # Load YOLO model
-    model = YOLO("best0.pt")  # Provide the path to your YOLO model file
+    model = YOLO("best.pt")  # Provide the path to your YOLO model file
 
     # Detect license plate using YOLO
     results = model.predict(source=image, conf=0.5)
