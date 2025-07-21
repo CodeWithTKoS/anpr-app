@@ -1,6 +1,6 @@
 streamlit
+opencv-python-headless==4.7.0.72
 numpy
-opencv-python==4.7.0.72
 paddleocr
 paddlepaddle
 ultralytics
